@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="icon" href="data:,">
+  <title>Schreibwerkstatt – Gerätetest</title>
+  <style>
+    body { font-family: -apple-system, "Segoe UI", Arial, sans-serif; font-size: 19px; line-height: 1.5; max-width: 760px; margin: 0 auto; padding: 16px; color: #222; }
+    h1 { color: #1f5fbf; font-size: 26px; }
+    li { margin: 8px 0; padding: 8px 12px; border-radius: 8px; list-style: none; }
+    .ok { background: #e7f4e8; } .ok::before { content: "✓ "; color: #2e7d32; font-weight: 700; }
+    .nein { background: #fde7e7; } .nein::before { content: "✗ "; color: #c62828; font-weight: 700; }
+    ul { padding: 0; }
+    button { font: inherit; min-height: 48px; padding: 10px 18px; border-radius: 10px; border: 2px solid #1f5fbf; background: #fff; color: #1f5fbf; margin: 6px 6px 6px 0; }
+    textarea { width: 100%; font: inherit; min-height: 4em; padding: 8px; box-sizing: border-box; }
+    .gesamt { font-size: 22px; font-weight: 700; padding: 12px; border-radius: 10px; }
+    .klein { color: #666; font-size: 15px; }
+  </style>
+</head>
+<body>
+  <h1>Schreibwerkstatt: Gerätetest</h1>
+  <p>Diese Seite prüft, ob die Schreibwerkstatt auf diesem Gerät laufen wird. Es wird nichts gespeichert und nichts übertragen.</p>
+  <div id="gesamt" class="gesamt">Test läuft …</div>
+  <ul id="liste"></ul>
+
+  <h2>Selbst ausprobieren</h2>
+  <p>1. Schreib etwas in das Feld. Lade die Seite neu. Steht der Text noch da?</p>
+  <textarea id="feld" placeholder="Hier etwas eintippen …"></textarea>
+  <p>2. Tippe auf die Knöpfe:</p>
+  <button type="button" id="kopieren">Text kopieren</button>
+  <button type="button" id="drucken">Drucken oder als PDF sichern</button>
+  <p id="kopiert" class="klein" hidden>Kopiert. Füge den Text zum Prüfen in Notizen ein.</p>
+
+  <h2>Für Herrn Brieden</h2>
+  <p class="klein" id="geraet"></p>
+  <p class="klein">Testseite Stand 12.11.2026 · © Michael Brieden</p>
+
+  <script>
+    (function () {
+      var ergebnisse = [];
+      function pruefe(name, fn) {
+        var ok = false;
+        try { ok = !!fn(); } catch (e) { ok = false; }
+        ergebnisse.push({ name: name, ok: ok });
+      }
+      pruefe('Seite lädt und JavaScript läuft', function () { return true; });
+      pruefe('Zwischenspeicher auf dem Gerät (localStorage)', function () {
+        localStorage.setItem('sw-test', '1'); var ok = localStorage.getItem('sw-test') === '1'; localStorage.removeItem('sw-test'); return ok;
+      });
+      pruefe('Umlaute erkennen (Unicode-Suche)', function () { return new RegExp('^\\p{L}+$', 'u').test('Jörgäöüß'); });
+      pruefe('Text vereinheitlichen (normalize)', function () { return 'é'.normalize('NFC') === 'é'; });
+      pruefe('Listen und Suche (fill, closest)', function () { return new Array(3).fill(0).length === 3 && typeof document.body.closest === 'function'; });
+      pruefe('Drucken möglich', function () { return typeof window.print === 'function'; });
+      pruefe('Kopieren möglich', function () { return (navigator.clipboard && window.isSecureContext) || document.queryCommandSupported('copy'); });
+
+      var liste = document.getElementById('liste');
+      var alleOk = true;
+      ergebnisse.forEach(function (e) {
+        var li = document.createElement('li');
+        li.className = e.ok ? 'ok' : 'nein';
+        li.textContent = e.name;
+        liste.appendChild(li);
+        if (!e.ok) alleOk = false;
+      });
+      var g = document.getElementById('gesamt');
+      g.textContent = alleOk ? 'Alles in Ordnung. Die Schreibwerkstatt läuft hier.' : 'Etwas fehlt. Bitte Foto von dieser Seite an Herrn Brieden.';
+      g.style.background = alleOk ? '#e7f4e8' : '#fde7e7';
+
+      document.getElementById('geraet').textContent = 'Adresse: ' + location.href + ' · Browser: ' + navigator.userAgent;
+
+      var feld = document.getElementById('feld');
+      try { feld.value = localStorage.getItem('sw-test-feld') || ''; } catch (e) {}
+      feld.addEventListener('input', function () { try { localStorage.setItem('sw-test-feld', feld.value); } catch (e) {} });
+
+      document.getElementById('kopieren').addEventListener('click', function () {
+        var text = feld.value || 'Testtext aus der Schreibwerkstatt';
+        var fertig = function () { document.getElementById('kopiert').hidden = false; };
+        if (navigator.clipboard && window.isSecureContext) { navigator.clipboard.writeText(text).then(fertig, fertig); return; }
+        var t = document.createElement('textarea'); t.value = text; document.body.appendChild(t); t.select();
+        try { document.execCommand('copy'); } catch (e) {}
+        document.body.removeChild(t); fertig();
+      });
+      document.getElementById('drucken').addEventListener('click', function () { window.print(); });
+    })();
+  </script>
+</body>
+</html>
